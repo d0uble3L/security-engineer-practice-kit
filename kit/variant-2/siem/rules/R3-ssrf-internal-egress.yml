@@ -1,0 +1,53 @@
+id: R3-ssrf-internal-egress
+name: Availability sync to internal address (SSRF)
+severity: high
+status: production
+index: provider-svc-app
+owner: detection-eng
+created: 2025-02-18
+last_modified: 2025-02-18
+mitre: [T1090, T1078.004, T1552.005]
+
+description: >
+  The availability-sync handler fetches a provider-supplied `source_url`. That
+  source must be an external partner calendar feed. If it points at an internal
+  address, it's server-side request forgery: the service can be steered at
+  internal hosts it should never reach. This rule fires when availability.sync
+  records a `source_url` whose host is a private/internal IP.
+
+# NOTE: SPL-flavored pseudo-syntax. Validate against the real backend before use.
+# The internal-IP regex is the whole story here — check what it does and does NOT
+# cover.
+query: |
+  index=provider-svc-app event=availability.sync
+  | rex field=source_url "https?://(?<host>[^/:]+)"
+  | where match(host, "^(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|127\.\d+\.\d+\.\d+)$")
+  | stats count as hits, values(source_url) as urls, values(actor) as actors
+      by provider_id, src_ip
+  | where hits > 0
+
+correlation:
+  extract: host_from_source_url
+  fires_when: host matches RFC1918_or_loopback
+  group_by: [provider_id, src_ip]
+
+# --- CHANGELOG -------------------------------------------------------------
+# 2025-02-18  initial version. Regex covers 10/8, 192.168/16, 172.16/12, 127/8.
+#             commit msg: "R3: block SSRF to internal ranges on the availability
+#             sync. Covers all RFC1918 private space plus loopback."
+# ---------------------------------------------------------------------------
+
+tuning_notes: >
+  The regex covers RFC1918 and loopback but omits two things that matter. First,
+  the cloud metadata service lives at the LINK-LOCAL address 169.254.169.254
+  (169.254.0.0/16), which is not RFC1918 and not in the pattern — so the exact
+  request the attacker made (source_url = http://169.254.169.254/latest/meta-data/...)
+  slips straight through. Second, the rule only matches IP-literal hosts; a DNS
+  name that resolves to an internal address (DNS rebinding, or an internal
+  hostname) is never evaluated, because SSRF classification on the raw URL string
+  can't see where the name resolves. A correct detection adds 169.254.0.0/16 (and
+  ideally 100.64/10 CGNAT and IPv6 ULA/link-local), and — better — moves the
+  decision to egress: alert on the *destination the service actually connected to*
+  (from egress/flow logs), not on the URL string the client supplied. Every attacker
+  sync in the window targeted 169.254.169.254 — outside the pattern — so the rule
+  never fired on the requests that pulled instance credentials.

@@ -1,0 +1,41 @@
+id: R1-login-bruteforce
+name: Credential brute force / stuffing by source IP
+severity: medium
+status: production
+index: auravia-gw-auth
+owner: detection-eng
+created: 2024-08-19
+last_modified: 2025-01-22
+mitre: [T1110, T1110.004]
+
+description: >
+  Fires when a single source IP accumulates a burst of failed logins in a short
+  window, indicating password guessing or credential stuffing against the auth
+  gateway.
+
+# NOTE: SPL-flavored pseudo-syntax. Validate against the real backend before use.
+query: |
+  index=auravia-gw-auth event=auth.login outcome=fail
+  | bin _time span=5m
+  | stats count as fails by _time, src_ip
+  | where fails > 20
+  | eval reason="failed_login_burst"
+
+threshold:
+  window: 5m
+  group_by: src_ip
+  fires_when: fails > 20
+
+# --- CHANGELOG -------------------------------------------------------------
+# 2024-08-19  initial version, threshold fails > 8 / 5m
+# 2024-11-30  threshold raised 8 -> 20 / 5m
+#             commit msg: "tune R1: internet scanners spam /login with 10-15
+#             tries and page the on-call nightly. Bump to 20/5m to cut noise."
+#             (Reviewed & approved. Cut nightly pages ~90%.)
+# ---------------------------------------------------------------------------
+
+tuning_notes: >
+  The 20/5m threshold was chosen to sit just above the typical opportunistic
+  internet scanner. It reliably catches loud bursts (see the two ~28/5m bursts
+  in the sample window). Whether it catches a *paced* attacker is a separate
+  question the author did not revisit after the 2024-11-30 bump.

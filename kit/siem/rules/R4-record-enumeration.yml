@@ -1,0 +1,59 @@
+id: R4-sensitive-record-enumeration
+name: Bulk sensitive-record access (patient/appointment enumeration)
+severity: high
+status: production
+index: booking-svc-app
+owner: detection-eng
+created: 2024-09-27
+last_modified: 2024-12-10
+mitre: [T1213, T1119, TA0010]
+
+description: >
+  Fires when a single principal reads an unusually large number of distinct
+  patient/appointment records in a short window, indicating scraping or IDOR/BOLA
+  enumeration of PHI rather than normal point lookups. Normal interactive users
+  open a handful of records; this catches someone walking the ID space.
+
+# NOTE: SPL-flavored pseudo-syntax. Validate against the real backend before use.
+query: |
+  index=booking-svc-app (event=patient.view OR event=appointment.view)
+  | search NOT user_agent="Auravia-BatchReminder/1.2"
+  | bin _time span=10m
+  | stats dc(record_id) as distinct_records,
+          values(event) as events,
+          min(_time) as first_seen,
+          max(_time) as last_seen
+      by _time, user_id, src_ip
+  | where distinct_records > 100
+
+threshold:
+  window: 10m
+  group_by: [user_id, src_ip]
+  fires_when: distinct_records > 100
+
+allowlist:
+  # The nightly reminder batch legitimately reads thousands of appointment
+  # records. Suppress it so it doesn't page the SOC every night at 02:00.
+  - user_agent: "Auravia-BatchReminder/1.2"
+
+# --- CHANGELOG -------------------------------------------------------------
+# 2024-09-27  initial version, threshold dc(record_id) > 100 / 10m.
+# 2024-12-10  added user_agent allowlist for the reminder batch.
+#             commit msg: "R4 pages every night — the reminder job reads ~2k
+#             appointments at 02:00 and trips the threshold. Allowlist its UA
+#             so on-call can sleep. (Job identifies as Auravia-BatchReminder/1.2.)"
+#             (Reviewed & approved. Nightly R4 pages -> 0.)
+# ---------------------------------------------------------------------------
+
+tuning_notes: >
+  The threshold logic is sound and would have caught the incident's ~430-record
+  walk easily. The allowlist is the hole. It suppresses on `user_agent`, a
+  value the client fully controls. The reminder batch is a real service
+  principal — user_id `svc-reminders`, user_role `service`, always from
+  10.0.6.12, always in the 950000+ appointment range at ~02:00. The incident
+  request set carries the SAME user_agent string but user_id `user-70142`,
+  src_ip 185.220.101.7, record_ids starting at 50000, at 14:23. Allowlisting a
+  spoofable header let the attacker opt out of the one rule built to catch
+  exactly what they did. A defensible allowlist pins the trusted actor by
+  attributes it does not control — authenticated principal + source IP
+  (user_id=svc-reminders AND src_ip=10.0.6.12) — not by a user-agent string.

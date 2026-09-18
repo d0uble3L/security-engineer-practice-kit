@@ -1,0 +1,57 @@
+id: R2-privilege-self-change
+name: Provider role / credential_status changed (privilege or credentialing tamper)
+severity: high
+status: production
+index: provider-svc-app
+owner: detection-eng
+created: 2024-10-30
+last_modified: 2025-03-11
+mitre: [T1098, T1078, T1222]
+
+description: >
+  Changing a provider's `role` or `credential_status` is a privileged,
+  audit-worthy action: it grants elevated console capabilities (role) or asserts
+  that a clinician is cleared to see patients (credential_status). This rule
+  fires when a provider.updated event reports either field in `fields_changed`,
+  so security can review who is granting privilege and credentialing to whom.
+
+# NOTE: SPL-flavored pseudo-syntax. Validate against the real backend before use.
+# The scope filter on the final line is the whole story here.
+query: |
+  index=provider-svc-app event=provider.updated
+  | where actor_role="admin"
+  | eval changed=mvjoin('fields_changed{}', ",")
+  | where match(changed, "(^|,)(role|credential_status)(,|$)")
+  | stats count as changes, values(provider_id) as targets, values(changed) as fields
+      by actor, actor_role, _time
+  | where changes > 0
+
+correlation:
+  watch_fields: [role, credential_status]
+  scope: actor_role=admin
+  group_by: [actor]
+
+# --- CHANGELOG -------------------------------------------------------------
+# 2024-10-30  initial version. Fired on ANY provider.updated whose fields_changed
+#             contained role or credential_status, regardless of who made it.
+# 2025-03-11  added `| where actor_role="admin"`.
+#             commit msg: "R2: role and credential_status can only be set from
+#             the med-staff admin console, so every real change is an admin
+#             action. Provider self-service edits only touch contact fields.
+#             Scope the rule to admin actors to stop alerting on the API's own
+#             normalization writes and cut ~30 pages/wk of noise."
+#             (Reviewed & approved.)
+# ---------------------------------------------------------------------------
+
+tuning_notes: >
+  Read the 2025-03-11 change against the mass-assignment bug in providers.js.
+  The commit's premise — "role/credential_status can only be set from the admin
+  console, so every real change is an admin action" — is EXACTLY the assumption
+  the PATCH handler violates: it merges the raw request body over the record, so a
+  *provider* can set their own role and credential_status. The incident's
+  self-escalation event is `provider.updated` with `actor_role="provider"`, which
+  the `where actor_role="admin"` filter discards before the field match ever runs.
+  The rule now structurally cannot see the one case that matters most: a
+  non-admin escalating themselves. The fix is not to scope by actor role at all
+  for these fields, but to alert on the field change AND flag `actor == provider_id`
+  (a self-edit of privileged fields) and `actor_role != admin` as high-severity.

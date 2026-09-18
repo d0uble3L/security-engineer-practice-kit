@@ -1,0 +1,53 @@
+{
+  "export_generated": "2025-03-12T06:00:00Z",
+  "window": {
+    "start": "2025-02-10",
+    "end": "2025-03-11",
+    "days": 30
+  },
+  "note": "Illustrative fiction for the practice kit. Counts are generated, not measured. Use to reason about operational blind spots, not as real telemetry.",
+  "rules": [
+    {
+      "id": "R1-login-bruteforce",
+      "severity": "medium",
+      "fires_30d": 237,
+      "acknowledged_30d": 96,
+      "open_unacknowledged": 141,
+      "last_fired": "2025-03-11",
+      "last_queue_triaged": "2025-02-21",
+      "last_rule_review": "2024-11-30",
+      "analyst_note": "high-volume, ~all opportunistic scanners; queue not worked since Feb 21."
+    },
+    {
+      "id": "R2-sqli-search",
+      "severity": "high",
+      "fires_30d": 0,
+      "acknowledged_30d": 0,
+      "open_unacknowledged": 0,
+      "last_fired": null,
+      "fires_all_time": 0,
+      "last_rule_review": "2024-09-02",
+      "analyst_note": "has never fired since creation; assumed 'no SQLi.'"
+    },
+    {
+      "id": "R3-privilege-claim-mismatch",
+      "severity": "high",
+      "fires_30d": 0,
+      "acknowledged_30d": 0,
+      "open_unacknowledged": 0,
+      "last_fired": "2025-01-28",
+      "last_rule_review": "2025-02-03",
+      "analyst_note": "silent since the 2025-02-03 change; no fires in window."
+    },
+    {
+      "id": "R4-sensitive-record-enumeration",
+      "severity": "high",
+      "fires_30d": 0,
+      "acknowledged_30d": 0,
+      "open_unacknowledged": 0,
+      "last_fired": "2024-12-09",
+      "last_rule_review": "2024-12-10",
+      "analyst_note": "silent since the 2024-12-10 allowlist; no fires in window."
+    }
+  ]
+}

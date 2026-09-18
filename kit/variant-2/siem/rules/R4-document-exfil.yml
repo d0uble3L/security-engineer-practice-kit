@@ -1,0 +1,60 @@
+id: R4-document-exfil
+name: Credentialing-document traversal / bulk exfiltration
+severity: high
+status: production
+index: provider-svc-app
+owner: detection-eng
+created: 2024-11-22
+last_modified: 2025-04-09
+mitre: [T1083, T1005, T1119]
+
+description: >
+  Reads of credentialing documents (license/DEA/board-cert PDFs) should stay
+  within a provider's own folder and at human volume. This rule catches two
+  abuses at once: a path-traversal attempt in the requested document path, and a
+  single actor pulling documents belonging to many providers in a short window
+  (bulk exfiltration).
+
+# NOTE: SPL-flavored pseudo-syntax. Validate against the real backend before use.
+# The field this rule reads is the whole story here — compare it to what
+# document.read events actually emit today (see siem/README.md).
+query: |
+  index=provider-svc-app event=document.read
+  | where match(resource_path, "(\.\.|%2e%2e|%2f|\.\./)")
+        OR mvcount(values(provider_id)) > 25
+  | stats count as reads,
+          dc(provider_id) as providers_touched,
+          values(resource_path) as paths
+      by actor, src_ip
+  | where reads > 25 OR providers_touched > 25
+
+threshold:
+  window: 15m
+  group_by: [actor, src_ip]
+  fires_when: traversal_in_resource_path OR distinct_providers > 25
+
+# --- CHANGELOG -------------------------------------------------------------
+# 2024-11-22  initial version. Matched traversal tokens in the document path and
+#             counted distinct providers per actor. Field was `resource_path`.
+# 2025-04-09  logging refactor: the document service standardized its event
+#             schema. `document.read` now emits the requested name as `filename`
+#             (and drops the old `resource_path` alias). Detection team was told
+#             "field rename, dashboards updated." This rule was NOT updated.
+#             commit msg (app repo): "logger: unify document event fields;
+#             resource_path -> filename". (No corresponding detection PR.)
+# ---------------------------------------------------------------------------
+
+tuning_notes: >
+  This rule is dead and has been since 2025-04-09. It matches on `resource_path`,
+  but `document.read` events no longer carry that field — they carry `filename`.
+  On most backends `match(resource_path, ...)` over a field that doesn't exist
+  yields null/false for every row, and `values(resource_path)` is empty, so the
+  rule evaluates to nothing and never fires (see the 30-day export: 0 fires since
+  the refactor). The traversal reads in the incident (58 document.read events with
+  `..%2f` sequences in `filename`, one actor, ~15s pacing, walking ~58 providers'
+  folders) are textbook matches for the rule's INTENT — the rule just isn't
+  looking at the field they land in. Fix: point the match and the dedup at
+  `filename`; add a normalize/urldecode step so `%2e%2e%2f` and `../` both match;
+  and re-check the distinct-provider count now that traversal reads inflate it.
+  Schema drift silently kills detections — a rule that goes to zero fires right
+  after a logging change is a coverage regression until proven otherwise.

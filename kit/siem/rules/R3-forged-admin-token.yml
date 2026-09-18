@@ -1,0 +1,62 @@
+id: R3-privilege-claim-mismatch
+name: JWT role claim does not match gateway-known role (forged/elevated token)
+severity: high
+status: production
+index: auravia-gw-auth
+owner: detection-eng
+created: 2024-10-14
+last_modified: 2025-02-03
+mitre: [T1078, T1550, T1068]
+
+description: >
+  The auth gateway records, for every forwarded request, both the role asserted
+  inside the caller's JWT (`token_role_claim`) and the role the gateway
+  independently knows for that subject from its own session store
+  (`gw_known_role`). If a token asserts a role the gateway never granted that
+  subject, the two disagree. This rule fires on that disagreement, which is the
+  signature of a forged or tampered token (the app verifies tokens with an
+  unsafe decode, so a self-signed "admin" token is accepted downstream even
+  though the gateway never issued that subject an admin session).
+
+# NOTE: SPL-flavored pseudo-syntax. Validate against the real backend before use.
+# The null-handling on the final `where` is the whole story here and is
+# BACKEND-SPECIFIC — confirm how your platform compares null to a string.
+query: |
+  index=auravia-gw-auth event=request.forward
+  | where isnotnull(gw_known_role)
+  | where token_role_claim != gw_known_role
+  | stats count as mismatches,
+          values(path) as paths,
+          min(_time) as first_seen,
+          max(_time) as last_seen
+      by token_sub, src_ip
+  | where mismatches > 0
+
+correlation:
+  compare: [token_role_claim, gw_known_role]
+  fires_when: token_role_claim != gw_known_role
+  group_by: [token_sub, src_ip]
+
+# --- CHANGELOG -------------------------------------------------------------
+# 2024-10-14  initial version. Fired on any row where token_role_claim differed
+#             from gw_known_role. Caught two red-team forged-token tests.
+# 2025-02-03  added `| where isnotnull(gw_known_role)` guard.
+#             commit msg: "R3: during gateway restarts / cache warmup the
+#             session store returns null gw_known_role for a few seconds and
+#             every in-flight request alerts. Skip rows where we don't yet know
+#             the subject's role to stop the restart-storm false positives."
+#             (Reviewed & approved. Killed the restart-time alert storms.)
+# ---------------------------------------------------------------------------
+
+tuning_notes: >
+  Read the 2025-02-03 change carefully against the data. `gw_known_role` is null
+  precisely when the gateway has NO session on record for the subject — which is
+  exactly what a forged token looks like: a subject the gateway never issued a
+  privileged session to. The restart-storm reasoning is real, but the fix threw
+  out the signal with the noise. Every forged-admin row in the incident window
+  carries `gw_known_role: null` and was filtered out by the guard before the
+  comparison ever ran. Separately: on several backends `token_role_claim !=
+  gw_known_role` where one side is null evaluates to null (not true) under
+  three-valued logic, so even without the guard the null rows may not match a
+  naive `!=`. A correct rule treats "privileged claim + null/absent known role"
+  as an alert condition in its own right, not something to suppress.

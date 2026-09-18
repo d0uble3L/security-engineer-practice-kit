@@ -1,0 +1,34 @@
+id: R2-sqli-search
+name: SQL injection patterns in appointment search
+severity: high
+status: production
+index: booking-svc-app
+owner: detection-eng
+created: 2024-09-02
+last_modified: 2024-09-02
+mitre: [T1190]
+
+description: >
+  Fires when a request to the appointment search endpoint contains classic SQL
+  injection tokens (UNION SELECT, boolean tautologies, comment terminators),
+  indicating an attempt to manipulate the query against the patients table.
+
+# NOTE: SPL-flavored pseudo-syntax. Validate against the real backend before use.
+query: |
+  index=booking-svc-app path="/api/v2/appointments/search*"
+  | regex path="(?i)(\bUNION\b\s+\bSELECT\b|\bOR\b\s+'1'\s*=\s*'1|--\s|;\s*DROP\b)"
+  | stats count by src_ip, user_id, path
+  | where count > 0
+
+# --- CHANGELOG -------------------------------------------------------------
+# 2024-09-02  initial version. Author tested against payloads pasted from an
+#             OWASP cheat sheet in a scratch search and confirmed matches.
+# ---------------------------------------------------------------------------
+
+tuning_notes: >
+  Author validated the regex by pasting decoded payloads (e.g. UNION SELECT ...,
+  ' OR '1'='1) directly into the search bar and confirming hits. The rule has
+  never fired in production. That was read as "no SQLi attempts yet" rather than
+  investigated. Consider what form the injected string actually takes in the
+  `path` field as logged by this service (see a Stage B line in data/app.log),
+  versus the form the author tested against.

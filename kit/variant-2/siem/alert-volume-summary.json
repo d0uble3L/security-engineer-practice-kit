@@ -1,0 +1,53 @@
+{
+  "export_generated": "2025-06-18T06:00:00Z",
+  "window": {
+    "start": "2025-05-19",
+    "end": "2025-06-17",
+    "days": 30
+  },
+  "note": "Illustrative fiction for the practice kit. Counts are generated, not measured. Use to reason about operational blind spots, not as real telemetry.",
+  "rules": [
+    {
+      "id": "R1-registration-abuse",
+      "severity": "medium",
+      "fires_30d": 164,
+      "acknowledged_30d": 76,
+      "open_unacknowledged": 88,
+      "last_fired": "2025-06-17",
+      "last_queue_triaged": "2025-06-02",
+      "last_rule_review": "2025-01-20",
+      "analyst_note": "high-volume, ~all opportunistic signup scrapers; queue not worked since Jun 2."
+    },
+    {
+      "id": "R2-privilege-self-change",
+      "severity": "high",
+      "fires_30d": 36,
+      "acknowledged_30d": 36,
+      "open_unacknowledged": 0,
+      "last_fired": "2025-06-16",
+      "last_rule_review": "2025-03-11",
+      "analyst_note": "fires low and steady, all legit med-staff admin changes, fully acknowledged. Looks healthy."
+    },
+    {
+      "id": "R3-ssrf-internal-egress",
+      "severity": "high",
+      "fires_30d": 0,
+      "acknowledged_30d": 0,
+      "open_unacknowledged": 0,
+      "last_fired": null,
+      "fires_all_time": 0,
+      "last_rule_review": "2025-02-18",
+      "analyst_note": "has never fired since creation; assumed 'no SSRF.'"
+    },
+    {
+      "id": "R4-document-exfil",
+      "severity": "high",
+      "fires_30d": 0,
+      "acknowledged_30d": 0,
+      "open_unacknowledged": 0,
+      "last_fired": "2025-04-08",
+      "last_rule_review": "2025-04-09",
+      "analyst_note": "silent since the 2025-04-09 logging refactor (resource_path -> filename); no fires in window."
+    }
+  ]
+}

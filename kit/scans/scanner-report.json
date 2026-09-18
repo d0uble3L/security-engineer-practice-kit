@@ -1,0 +1,146 @@
+{
+  "schema_version": "1.0",
+  "scan": {
+    "engine": "AuraScan SAST/SCA",
+    "engine_version": "4.2.7",
+    "ruleset": "OWASP Top 10 2017",
+    "ruleset_version": "2017.1",
+    "scanned_at": "2025-03-11T02:14:06Z",
+    "repository": "auravia/booking-svc",
+    "commit": "9c2f1ab",
+    "branch": "main",
+    "duration_ms": 641,
+    "lines_of_code": 512,
+    "coverage": {
+      "languages": ["javascript"],
+      "scope": ["application code", "dependencies", "IaC and pipeline configs"],
+      "paths_excluded": ["test/**"]
+    },
+    "analysis": {
+      "taint_analysis": true,
+      "deep_dataflow": true
+    },
+    "sca": {
+      "reachability_analysis": "enabled",
+      "advisory_source": "AuraScan Intel Feed"
+    }
+  },
+  "summary": {
+    "total_findings": 12,
+    "critical": 3,
+    "high": 2,
+    "medium": 2,
+    "low": 3
+  },
+  "findings": [
+    {
+      "id": "AURA-SAST-001",
+      "severity": "CRITICAL",
+      "cwe": "CWE-89",
+      "title": "SQL Injection",
+      "file": "src/routes/appointments.js",
+      "line": 20,
+      "description": "User-controlled value req.query.patientName is concatenated into a SQL string passed to db.raw(). Tainted data reaches a sink without parameterization.",
+      "confidence": "high"
+    },
+    {
+      "id": "AURA-SAST-002",
+      "severity": "HIGH",
+      "cwe": "CWE-79",
+      "title": "Reflected Cross-Site Scripting",
+      "file": "src/routes/appointments.js",
+      "line": 24,
+      "description": "req.query.patientName is reflected in the response body returned to the client without output encoding.",
+      "confidence": "medium"
+    },
+    {
+      "id": "AURA-SAST-003",
+      "severity": "MEDIUM",
+      "cwe": "CWE-798",
+      "title": "Use of Hard-coded Credentials",
+      "file": "src/config.js",
+      "line": 17,
+      "description": "A string literal that appears to be a credential is used as a default value.",
+      "confidence": "medium"
+    },
+    {
+      "id": "AURA-SAST-004",
+      "severity": "LOW",
+      "cwe": "CWE-209",
+      "title": "Information Exposure Through Error Message",
+      "file": "src/routes/appointments.js",
+      "line": 28,
+      "description": "err.stack is returned to the client on the /search failure path.",
+      "confidence": "high"
+    },
+    {
+      "id": "AURA-SAST-005",
+      "severity": "LOW",
+      "cwe": "CWE-307",
+      "title": "Missing Rate Limiting on Authentication Endpoint",
+      "file": "src/routes/auth.js",
+      "line": 12,
+      "description": "The /login handler has no throttling, lockout, or backoff on repeated failures.",
+      "confidence": "high"
+    },
+    {
+      "id": "AURA-SAST-006",
+      "severity": "MEDIUM",
+      "cwe": "CWE-942",
+      "title": "Permissive Cross-Origin Resource Sharing",
+      "file": "src/server.js",
+      "line": 19,
+      "description": "Access-Control-Allow-Origin is set from the request Origin header.",
+      "confidence": "medium"
+    },
+    {
+      "id": "AURA-SAST-007",
+      "severity": "LOW",
+      "cwe": "CWE-693",
+      "title": "Missing Security Headers",
+      "file": "src/server.js",
+      "line": 1,
+      "description": "No helmet() / HSTS / CSP / X-Content-Type-Options middleware configured.",
+      "confidence": "high"
+    },
+    {
+      "id": "AURA-SCA-101",
+      "severity": "CRITICAL",
+      "cwe": "CWE-94",
+      "package": "lodash",
+      "version": "4.17.15",
+      "advisory": "CVE-2021-23337",
+      "reported_cvss": 9.8,
+      "title": "Command Injection in lodash template()",
+      "description": "lodash < 4.17.21 is vulnerable to command injection via the template function.",
+      "fixed_in": "4.17.21",
+      "reachable": true
+    },
+    {
+      "id": "AURA-SCA-102",
+      "severity": "HIGH",
+      "cwe": "CWE-352",
+      "package": "axios",
+      "version": "1.5.0",
+      "advisory": "CVE-2023-45857",
+      "reported_cvss": 8.1,
+      "title": "XSRF-TOKEN disclosure to third-party host in axios",
+      "description": "axios >=1.0.0 <1.6.0 leaks the XSRF-TOKEN cookie in the X-XSRF-TOKEN header on cross-origin requests.",
+      "fixed_in": "1.6.0",
+      "reachable": true
+    },
+    {
+      "id": "AURA-SCA-103",
+      "severity": "CRITICAL",
+      "cwe": "CWE-1321",
+      "package": "minimist",
+      "version": "1.2.0",
+      "advisory": "CVE-2021-44906",
+      "reported_cvss": 9.8,
+      "title": "Prototype Pollution in minimist",
+      "description": "minimist <= 1.2.5 is vulnerable to prototype pollution via setKey().",
+      "fixed_in": "1.2.6",
+      "reachable": true
+    }
+  ]
+}

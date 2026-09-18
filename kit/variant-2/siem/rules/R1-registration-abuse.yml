@@ -1,0 +1,48 @@
+id: R1-registration-abuse
+name: Bulk self-service registration abuse (fake-account signup flood)
+severity: medium
+status: production
+index: provider-svc-app
+owner: detection-eng
+created: 2024-09-02
+last_modified: 2025-01-20
+mitre: [T1136, T1583]
+
+description: >
+  The provider portal exposes an open self-service registration endpoint
+  (POST /api/v2/auth/register). Abuse looks like one source spraying many
+  registrations to create disposable accounts (spam, scraping, or seeding
+  accounts for later fraud). This rule counts registrations per source IP over a
+  rolling hour and alerts when a single IP crosses the threshold.
+
+# NOTE: SPL-flavored pseudo-syntax. Validate against the real backend before use.
+query: |
+  index=provider-svc-app event=auth.register
+  | bin _time span=1h
+  | stats count as registrations, values(username) as accounts by src_ip, _time
+  | where registrations > 10
+
+threshold:
+  window: 1h
+  group_by: src_ip
+  fires_when: registrations > 10
+
+# --- CHANGELOG -------------------------------------------------------------
+# 2024-09-02  initial version. Threshold registrations > 3 / hour / IP.
+# 2025-01-20  raised threshold 3 -> 10 per hour.
+#             commit msg: "R1: legitimate onboarding events (career fairs,
+#             residency cohort intake) and a scraper bot were generating dozens
+#             of low-value pages a week at >3/hr. Raise to 10 to cut the noise;
+#             real fraud floods are hundreds/hr anyway." (Reviewed & approved.)
+# ---------------------------------------------------------------------------
+
+tuning_notes: >
+  This rule is shaped for VOLUME abuse — the hundreds-per-hour signup flood. The
+  incident used registration as a precision tool, not a flood: a single actor
+  created five accounts (one primary + four sleepers to verify later) from one IP
+  in ~90 seconds — well under 10/hour. The threshold isn't "wrong," it's tuned for
+  a different attack shape. Catching this requires pairing registration with what
+  the account DOES next (immediate self-escalation, verifying other accounts),
+  not counting registrations in isolation. The benign 04:00 scraper burst
+  (35 pages from 192.0.2.77) is exactly the volume case this rule DOES catch,
+  which is why the dashboard shows R1 firing and looking healthy.
