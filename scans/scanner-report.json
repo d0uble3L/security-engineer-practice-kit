@@ -39,7 +39,7 @@
       "cwe": "CWE-89",
       "title": "SQL Injection",
       "file": "src/routes/appointments.js",
-      "line": 20,
+      "line": 18,
       "description": "User-controlled value req.query.patientName is concatenated into a SQL string passed to db.raw(). Tainted data reaches a sink without parameterization.",
       "confidence": "high"
     },
@@ -59,7 +59,7 @@
       "cwe": "CWE-798",
       "title": "Use of Hard-coded Credentials",
       "file": "src/config.js",
-      "line": 17,
+      "line": 15,
       "description": "A string literal that appears to be a credential is used as a default value.",
       "confidence": "medium"
     },
@@ -69,7 +69,7 @@
       "cwe": "CWE-209",
       "title": "Information Exposure Through Error Message",
       "file": "src/routes/appointments.js",
-      "line": 28,
+      "line": 27,
       "description": "err.stack is returned to the client on the /search failure path.",
       "confidence": "high"
     },
@@ -79,7 +79,7 @@
       "cwe": "CWE-307",
       "title": "Missing Rate Limiting on Authentication Endpoint",
       "file": "src/routes/auth.js",
-      "line": 12,
+      "line": 13,
       "description": "The /login handler has no throttling, lockout, or backoff on repeated failures.",
       "confidence": "high"
     },

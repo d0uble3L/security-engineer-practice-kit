@@ -1,0 +1,38 @@
+# --- Node (service/booking-svc, variant-2/service/provider-svc) ---
+# The services are for code review only; if you `npm install` to poke at them,
+# keep the install out of git. package-lock.json files ARE tracked on purpose
+# (one of the planted findings lives in a lockfile).
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+coverage/
+.nyc_output/
+
+# --- Python (data/generate_logs.py, siem/generate_alert_volume.py) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# --- Secrets / local env (never commit real ones; the planted ones are in source) ---
+.env
+.env.*
+!.env.example
+
+# --- Editors / OS ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- Learner scratch: your own answers, if you keep them next to the kit ---
+/answers/
+/my-answers*.md
+
+# NOTE: do NOT add "*.log" here. data/app.log and data/gateway.log are the
+# assessment's log evidence and must stay tracked.
