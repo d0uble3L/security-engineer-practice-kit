@@ -37,7 +37,7 @@ detection engineering, **(3)** compliance mapping (HIPAA Security Rule + HITRUST
 ```
 INSTRUCTIONS.md            <- read first: scenario, how to run it, the box contents
 ASSESSMENT.md              <- the four tasks; your worksheet
-service/<svc>/             <- the codebase under review
+service/<svc>/             <- the codebase under review (whole service repo, dotfiles included)
 scans/scanner-report.json  <- output of "AuraScan", the (unreliable) SAST/SCA tool
 data/app.log, gateway.log  <- 24h of logs, JSON lines, with an incident inside
 data/generate_logs.py      <- the log generator (don't peek until after Task 2)

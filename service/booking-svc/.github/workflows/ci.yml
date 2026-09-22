@@ -1,0 +1,56 @@
+# booking-svc — CI
+# Runs the test suite on every push to main and on every pull request, including
+# PRs opened from forks by contract engineers. Integration tests need the shared
+# dev database and the reminder service, so the dev secrets are wired in as env.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PGHOST: db.dev.auravia.local
+      PGUSER: booking_svc
+      PGDATABASE: auravia_booking
+      PGPASSWORD: ${{ secrets.DEV_PGPASSWORD }}
+      # Same signing secret as the gateway so the auth integration tests pass.
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      REMINDER_URL: http://reminders.dev.auravia.local/send
+      REMINDER_API_KEY: ${{ secrets.REMINDER_API_KEY }}
+    steps:
+      # Check out the PR's actual head so we test what the contributor submitted,
+      # not the merge-base.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+      - name: Build API docs
+        run: npm run docs
+
+      - name: Post result to PR
+        if: github.event_name == 'pull_request_target'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+              body: 'CI passed on ' + context.payload.pull_request.head.sha.slice(0, 7),
+            });

@@ -47,7 +47,7 @@ security lead wants your read before the risk review.
 ```
 INSTRUCTIONS.md              <- you are here
 ASSESSMENT.md                <- the four tasks; your worksheet
-service/provider-svc/        <- the codebase under review
+service/provider-svc/        <- the codebase under review (the whole service repo, dotfiles included)
 scans/scanner-report.json    <- output of "AuraScan", the SAST/SCA tool
 data/app.log                 <- provider-svc application + access logs (24h, JSON lines)
 data/gateway.log             <- auth-gateway audit logs (24h, JSON lines)

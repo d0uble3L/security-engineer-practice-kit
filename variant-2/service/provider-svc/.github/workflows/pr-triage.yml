@@ -1,0 +1,48 @@
+# provider-svc — PR triage: label incoming PRs, post a heads-up to Slack, and
+# pre-stage a preview deploy so the med-staff platform team can review quickly.
+name: pr-triage
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      PROVIDER_SVC_DEPLOY_TOKEN: ${{ secrets.PROVIDER_SVC_DEPLOY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Heads-up in #provider-svc-prs with the PR title and a short summary of the
+      # body, so reviewers see what's coming without opening GitHub.
+      - name: Notify Slack
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          SUMMARY="$(printf '%s' "${{ github.event.pull_request.body }}" | head -c 400)"
+          curl -sS -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"New PR #${{ github.event.pull_request.number }}: ${TITLE}\\n${SUMMARY}\"}" \
+            "$SLACK_WEBHOOK"
+
+      # Label by touched paths and title keywords (credentialing, docs, infra).
+      - name: Auto-label
+        uses: auravia-platform/auto-labeler@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Pre-stage a preview environment for QA to click through.
+      - name: Stage preview deploy
+        uses: actions/github-script@main
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            execSync('./scripts/stage-preview.sh', {
+              stdio: 'inherit',
+              env: { ...process.env, DEPLOY_TOKEN: process.env.PROVIDER_SVC_DEPLOY_TOKEN },
+            });
